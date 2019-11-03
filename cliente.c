@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
 		}
 
 		if(feof(file)){ //se lemos todo o arquivo, mandamos o sinal de fim de transmissao x04 = EOT
-			send(remote_socket, "\x04", 1, 0);
+			send(remote_socket, "\x04", BUFFER_SIZE, 0);
 			break;
 		}
 	}

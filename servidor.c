@@ -94,9 +94,10 @@ int main(int argc, char **argv) {
 	printf("aguardando mensagens...\n");
 
 	char buffer[BUFFER_SIZE+1];
+	int bytes;
 	while(1){
-		if(recv(remote_socket, buffer, BUFFER_SIZE, 0)== SOCKET_ERROR){
-			msg_err_exit("Erro no recebimento dos dados.\n");
+		if(recv(remote_socket, buffer, BUFFER_SIZE, 0) == SOCKET_ERROR){
+			msg_err_exit("Erro na transmissao dos dados: SOCKET_ERROR\n");
 		}
 		if(buffer[0]== '\x04'){ //verifica se eh um sinal de fim de transmissao
 			break;
