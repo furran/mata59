@@ -6,7 +6,7 @@
 #include <winsock.h>
 
 #define BACKLOG_MAX 5
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 512
 #define EXIT_CALL_STRING "#quit"
 
 int local_socket = 0;
@@ -17,7 +17,6 @@ int message_length = 0;
 
 unsigned short local_port = 0;
 unsigned short remote_port = 0;
-char file[BUFFER_SIZE];
 
 struct sockaddr_in local_address;
 struct sockaddr_in remote_address;
@@ -86,7 +85,27 @@ int main(int argc, char **argv) {
 	}
 
 	printf("conexao estabelecida com %s\n", inet_ntoa(remote_address.sin_addr));
+
+	FILE * file = fopen("download.txt", "w");
+	if(file == NULL){
+		printf("Erro na criacao do arquivo.\n");
+		return 1;
+	}
 	printf("aguardando mensagens...\n");
+
+	char buffer[BUFFER_SIZE+1];
+	while(1){
+		if(recv(remote_socket, buffer, BUFFER_SIZE, 0)== SOCKET_ERROR){
+			msg_err_exit("Erro no recebimento dos dados.\n");
+		}
+		if(buffer[0]== '\x04'){ //verifica se eh um sinal de fim de transmissao
+			break;
+		}
+		printf("Buffer: %s\n", buffer);
+		fwrite(buffer, sizeof(char), sizeof(buffer), file);
+
+	}
+	fclose(file);
 
 	/*
 	  do
@@ -103,12 +122,7 @@ int main(int argc, char **argv) {
 	 	 printf("%s: %s\n", inet_ntoa(remote_address.sin_addr), file);
 	 }while(strcmp(file, EXIT_CALL_STRING)); // sai quando receber um "#quit" do cliente
 	 */
-	recv(remote_socket, file, BUFFER_SIZE, 0);
-	FILE * f = fopen("download.txt", "w");
-	printf("Buffer: %s\n", file);
-	if(f !=NULL){
-		fwrite(file, sizeof(char), sizeof(file), f);
-	}
+
 
 	printf("encerrando\n");
 	WSACleanup();

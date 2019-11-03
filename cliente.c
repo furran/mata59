@@ -7,7 +7,7 @@
 #include <string.h>
 #include <winsock.h>
 
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 512
 #define EXIT_CALL_STRING "#quit"
 
 int remote_socket = 0;
@@ -16,7 +16,6 @@ int message_length = 0;
 unsigned short remote_port = 0;
 
 char remote_ip[32];
-char file[BUFFER_SIZE];
 
 struct sockaddr_in remote_address;
 
@@ -63,12 +62,13 @@ int main(int argc, char **argv) {
 
 	FILE *file;
 	printf("nome do arquivo:\n");
-	char filename[20];
+	char filename[FILENAME_MAX];
 	scanf("%s", filename);
 	file = fopen(filename, "r");
 
 	if (file == NULL) {
 		printf("\n Nao foi possivel ler o arquivo");
+		while(send(remote_socket,"\x04",1,0)!= 1); // mensagem de fim de transmissao, precisa ser checada no servidor.c
 		getchar();
 		exit(0);
 	}
@@ -77,30 +77,48 @@ int main(int argc, char **argv) {
 	long fileSize = ftell(file);
 	rewind(file);
 
-	char buffer[1024];
+	char buffer[BUFFER_SIZE+1];
+	memset(buffer, 0, sizeof(buffer));
+	while(fread(buffer,sizeof(char),BUFFER_SIZE,file)){
+		printf("Buffer: %s\n", buffer);
 
-	fread(buffer,sizeof(char),fileSize,file);
-	printf("Buffer: %s\n", buffer);
+		if (send(remote_socket, buffer, BUFFER_SIZE, 0) == SOCKET_ERROR) { //nao temos garantia de que todos os dados foram enviados
+			WSACleanup();
+			closesocket(remote_socket);
+			msg_err_exit("send() failed\n");
+		}
 
-	if (send(remote_socket, buffer, strlen(buffer), 0) == SOCKET_ERROR) {
-		WSACleanup();
-		closesocket(remote_socket);
-		msg_err_exit("send() failed\n");
+		if(feof(file)){ //se lemos todo o arquivo, mandamos o sinal de fim de transmissao x04 = EOT
+			send(remote_socket, "\x04", 1, 0);
+			break;
+		}
 	}
 
-	/*
-	do {
+	 /*
+	 do {
 		// limpa o buffer
 		memset(&file, 0, BUFFER_SIZE);
 
-		// recebe a mensagem do cliente
-		message_length = recv(remote_socket, file, BUFFER_SIZE, 0);
-		if (message_length == SOCKET_ERROR)
-			msg_err_exit("recv() failed\n");
+		FILE * file;
+		file = fopen("C:\\Users\\SIDNEI\\Desktop\\hi.txt", "r");
 
-		// exibe a mensagem na tela
-		printf("%s: %s\n", inet_ntoa(remote_address.sin_addr), file);
-	} while (strcmp(file, EXIT_CALL_STRING)); // sai quando receber um "#quit" do cliente
+		if (file == NULL) {
+			printf("\n Não foi possivel ler o arquivo");
+			getchar();
+			exit(0);
+		}
+
+		fclose(file);
+
+		message_length = strlen(file);
+
+		// envia a mensagem para o servidor
+		if (send(remote_socket, file, message_length, 0) == SOCKET_ERROR) {
+			WSACleanup();
+			closesocket(remote_socket);
+			msg_err_exit("send() failed\n");
+		}
+	} while (strcmp(file, EXIT_CALL_STRING)); // sai quando enviar um "#quit" para o servidor
 	*/
 
 	printf("encerrando\n");
