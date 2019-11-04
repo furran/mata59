@@ -3,11 +3,95 @@
 #include <stdio.h>
 #include <string.h>
 
-int send_data(int sockfd, void* data, int length);
-int recv_data(int sockfd, void* data, int maxbuflen);
-int send_all(int sock, void* buffer, int length);
+#ifndef BUFFER_LENGTH
+#define BUFFER_LENGTH 512
+#endif
 
-//encapsula a mensagem com um "header" que diz o tamanho da mensagem que segue
+int send_file(int sock, char * filename);
+int recv_file(int sock);
+int send_data(int sock, void* data, int length);
+int recv_data(int sock, void* data, int maxbuflen);
+int send_all(int sock, void* buffer, int length);
+char *get_filename_extension(const char *filename);
+
+int send_file(int sock, char * filename){
+
+	FILE * file;
+	file = fopen(filename, "rb");
+
+	if (file == NULL) {
+		printf("\n Nao foi possivel ler o arquivo");
+		send_data(sock,"",0); // mensagem de fim de transmissao, precisa ser checada no servidor.c
+		return 1;
+	}
+
+	char buffer[BUFFER_LENGTH+1];
+	memset(buffer, 0, sizeof(buffer));
+	int bytesRead;
+	int bytesSent;
+
+	//manda o nome do arquivo
+	bytesSent = send_data(sock, filename, strlen(filename));
+	if (bytesSent == SOCKET_ERROR) {
+		return SOCKET_ERROR;
+	}
+
+	while(1){
+		bytesRead = fread(buffer,1,BUFFER_LENGTH,file);
+		bytesSent = send_data(sock, buffer, bytesRead);
+		if (bytesSent == SOCKET_ERROR) { //nao temos garantia de que todos os dados foram enviados
+			return SOCKET_ERROR;
+		}
+
+		if(feof(file)){ //se lemos todo o arquivo, mandamos o sinal de fim de transmissao, com tamanho 0
+			send_data(sock,"",0);
+			break;
+		}
+
+	}
+
+	fclose(file);
+	return 0;
+}
+
+int recv_file(int sock){
+	char buffer[BUFFER_LENGTH+1];
+	int bytesReceived;
+
+	//espera pelo nome do arquivo
+	bytesReceived = recv_data(sock, buffer, BUFFER_LENGTH);
+	if (bytesReceived == SOCKET_ERROR) {
+		return SOCKET_ERROR;
+	}
+	buffer[bytesReceived] = '\0';
+
+	char *ext = get_filename_extension(buffer);
+
+	char outputFilename[] = "download";
+
+	strcat(outputFilename, ext);
+	FILE * file = fopen(outputFilename, "wb");
+	if (file == NULL) {
+		printf("Erro na criacao do arquivo.\n");
+		return 1;
+	}
+
+	while (1) {
+		bytesReceived = recv_data(sock, buffer, BUFFER_LENGTH);
+		if (bytesReceived == SOCKET_ERROR) {
+			return SOCKET_ERROR;
+		}
+		if (bytesReceived == 0) { //verifica se eh um sinal de fim de transmissao
+			break;
+		}
+
+		fwrite(buffer, sizeof(char), bytesReceived, file);
+
+	}
+	fclose(file);
+	return 0;
+}
+
 //retorna o numero de bytes enviados(i.e. o tamanho da mensagem apenas) ou SOCKET_ERROR
 int send_data(int sock, void* data, int length){
 	int bytes = 0;

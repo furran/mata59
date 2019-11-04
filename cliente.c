@@ -60,54 +60,16 @@ int main(int argc, char **argv) {
 		msg_err_exit("connect() failed\n");
 	}
 
-
-	FILE *file;
 	printf("nome do arquivo:\n");
 	char filename[BUFFER_SIZE];
 	scanf("%s", filename);
-	file = fopen(filename, "rb");
 
-	if (file == NULL) {
-		printf("\n Nao foi possivel ler o arquivo");
-		send_data(remote_socket,"",0); // mensagem de fim de transmissao, precisa ser checada no servidor.c
-		getchar();
-		exit(0);
-	}
-
-	fseek(file, 0, SEEK_END);	// obter tamanho do arquivo -- nao portavel
-	long fileSize = ftell(file);
-	rewind(file);
-
-	char buffer[BUFFER_SIZE+1];
-	memset(buffer, 0, sizeof(buffer));
-	int bytesRead;
-	int bytesSent;
-
-	//manda o nome do arquivo
-	bytesSent = send_data(remote_socket, filename, strlen(filename));
-	if (bytesSent == SOCKET_ERROR) {
+	if(send_file(remote_socket, filename) == SOCKET_ERROR){
 		WSACleanup();
 		closesocket(remote_socket);
-		msg_err_exit("send() failed\n");
+		msg_err_exit("Erro na transferencia do arquivo\n");
 	}
 
-	while(1){
-		bytesRead = fread(buffer,1,BUFFER_SIZE,file);
-		bytesSent = send_data(remote_socket, buffer, bytesRead);
-		if (bytesSent == SOCKET_ERROR) { //nao temos garantia de que todos os dados foram enviados
-			WSACleanup();
-			closesocket(remote_socket);
-			msg_err_exit("send() failed\n");
-		}
-
-		if(feof(file)){ //se lemos todo o arquivo, mandamos o sinal de fim de transmissao, com tamanho 0
-			send_data(remote_socket,"",0);
-			break;
-		}
-
-	}
-
-	fclose(file);
 	printf("encerrando\n");
 	system("PAUSE");
 	WSACleanup();

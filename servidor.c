@@ -89,45 +89,11 @@ int main(int argc, char **argv) {
 
 	printf("aguardando mensagens...\n");
 
-	char buffer[BUFFER_SIZE+1];
-	int bytesReceived;
-
-	//espera pelo nome do arquivo
-	bytesReceived = recv_data(remote_socket, buffer, BUFFER_SIZE);
-	if (bytesReceived == SOCKET_ERROR) {
+	if(recv_file(remote_socket) == SOCKET_ERROR){
 		WSACleanup();
 		closesocket(remote_socket);
-		msg_err_exit("Erro na transmissao dos dados: SOCKET_ERROR\n");
+		msg_err_exit("Erro na transferencia do arquivo\n");
 	}
-	buffer[bytesReceived] = '\0';
-
-	char *ext = get_filename_extension(buffer);
-
-	char outputFilename[] = "download";
-
-	strcat(outputFilename, ext);
-	FILE * file = fopen(outputFilename, "wb");
-	if (file == NULL) {
-		printf("Erro na criacao do arquivo.\n");
-		return 1;
-	}
-
-
-	while(1){
-		bytesReceived = recv_data(remote_socket, buffer, BUFFER_SIZE);
-		if(bytesReceived == SOCKET_ERROR){
-			WSACleanup();
-			closesocket(remote_socket);
-			msg_err_exit("Erro na transmissao dos dados: SOCKET_ERROR\n");
-		}
-		if(bytesReceived == 0){ //verifica se eh um sinal de fim de transmissao
-			break;
-		}
-
-		fwrite(buffer, sizeof(char), bytesReceived, file);
-
-	}
-	fclose(file);
 
 	printf("encerrando\n");
 	WSACleanup();
