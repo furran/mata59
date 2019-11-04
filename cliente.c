@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <winsock.h>
+#include "ftp.c"
 
 #define BUFFER_SIZE 512
 #define EXIT_CALL_STRING "#quit"
@@ -62,69 +63,56 @@ int main(int argc, char **argv) {
 
 	FILE *file;
 	printf("nome do arquivo:\n");
-	char filename[FILENAME_MAX];
+	char filename[BUFFER_SIZE];
 	scanf("%s", filename);
-	file = fopen(filename, "r");
+	file = fopen(filename, "rb");
 
 	if (file == NULL) {
 		printf("\n Nao foi possivel ler o arquivo");
-		while(send(remote_socket,"\x04",1,0)!= 1); // mensagem de fim de transmissao, precisa ser checada no servidor.c
+		send_data(remote_socket,"",0); // mensagem de fim de transmissao, precisa ser checada no servidor.c
 		getchar();
 		exit(0);
 	}
-	// obter tamanho do arquivo
-	fseek(file, 0, SEEK_END);
+
+	fseek(file, 0, SEEK_END);	// obter tamanho do arquivo -- nao portavel
 	long fileSize = ftell(file);
 	rewind(file);
 
 	char buffer[BUFFER_SIZE+1];
 	memset(buffer, 0, sizeof(buffer));
-	while(fread(buffer,sizeof(char),BUFFER_SIZE,file)){
-		printf("Buffer: %s\n", buffer);
+	int bytesRead;
+	int bytesSent;
 
-		if (send(remote_socket, buffer, BUFFER_SIZE, 0) == SOCKET_ERROR) { //nao temos garantia de que todos os dados foram enviados
-			WSACleanup();
-			closesocket(remote_socket);
-			msg_err_exit("send() failed\n");
-		}
-
-		if(feof(file)){ //se lemos todo o arquivo, mandamos o sinal de fim de transmissao x04 = EOT
-			send(remote_socket, "\x04", BUFFER_SIZE, 0);
-			break;
-		}
+	//manda o nome do arquivo
+	bytesSent = send_data(remote_socket, filename, strlen(filename));
+	if (bytesSent == SOCKET_ERROR) {
+		WSACleanup();
+		closesocket(remote_socket);
+		msg_err_exit("send() failed\n");
 	}
 
-	 /*
-	 do {
-		// limpa o buffer
-		memset(&file, 0, BUFFER_SIZE);
-
-		FILE * file;
-		file = fopen("C:\\Users\\SIDNEI\\Desktop\\hi.txt", "r");
-
-		if (file == NULL) {
-			printf("\n Não foi possivel ler o arquivo");
-			getchar();
-			exit(0);
-		}
-
-		fclose(file);
-
-		message_length = strlen(file);
-
-		// envia a mensagem para o servidor
-		if (send(remote_socket, file, message_length, 0) == SOCKET_ERROR) {
+	while(1){
+		bytesRead = fread(buffer,1,BUFFER_SIZE,file);
+		bytesSent = send_data(remote_socket, buffer, bytesRead);
+		if (bytesSent == SOCKET_ERROR) { //nao temos garantia de que todos os dados foram enviados
 			WSACleanup();
 			closesocket(remote_socket);
 			msg_err_exit("send() failed\n");
 		}
-	} while (strcmp(file, EXIT_CALL_STRING)); // sai quando enviar um "#quit" para o servidor
-	*/
 
+		if(feof(file)){ //se lemos todo o arquivo, mandamos o sinal de fim de transmissao, com tamanho 0
+			send_data(remote_socket,"",0);
+			break;
+		}
+
+	}
+
+	fclose(file);
 	printf("encerrando\n");
+	system("PAUSE");
 	WSACleanup();
 	closesocket(remote_socket);
-	fclose(file);
-	system("PAUSE");
+
+
 	return 0;
 }

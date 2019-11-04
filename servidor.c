@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <winsock.h>
+#include "ftp.c"
 
 #define BACKLOG_MAX 5
 #define BUFFER_SIZE 512
@@ -86,44 +87,47 @@ int main(int argc, char **argv) {
 
 	printf("conexao estabelecida com %s\n", inet_ntoa(remote_address.sin_addr));
 
-	FILE * file = fopen("download.txt", "w");
-	if(file == NULL){
-		printf("Erro na criacao do arquivo.\n");
-		return 1;
-	}
 	printf("aguardando mensagens...\n");
 
 	char buffer[BUFFER_SIZE+1];
-	int bytes;
+	int bytesReceived;
+
+	//espera pelo nome do arquivo
+	bytesReceived = recv_data(remote_socket, buffer, BUFFER_SIZE);
+	if (bytesReceived == SOCKET_ERROR) {
+		WSACleanup();
+		closesocket(remote_socket);
+		msg_err_exit("Erro na transmissao dos dados: SOCKET_ERROR\n");
+	}
+	buffer[bytesReceived] = '\0';
+
+	char *ext = get_filename_extension(buffer);
+
+	char outputFilename[] = "download";
+
+	strcat(outputFilename, ext);
+	FILE * file = fopen(outputFilename, "wb");
+	if (file == NULL) {
+		printf("Erro na criacao do arquivo.\n");
+		return 1;
+	}
+
+
 	while(1){
-		if(recv(remote_socket, buffer, BUFFER_SIZE, 0) == SOCKET_ERROR){
+		bytesReceived = recv_data(remote_socket, buffer, BUFFER_SIZE);
+		if(bytesReceived == SOCKET_ERROR){
+			WSACleanup();
+			closesocket(remote_socket);
 			msg_err_exit("Erro na transmissao dos dados: SOCKET_ERROR\n");
 		}
-		if(buffer[0]== '\x04'){ //verifica se eh um sinal de fim de transmissao
+		if(bytesReceived == 0){ //verifica se eh um sinal de fim de transmissao
 			break;
 		}
-		printf("Buffer: %s\n", buffer);
-		fwrite(buffer, sizeof(char), sizeof(buffer), file);
+
+		fwrite(buffer, sizeof(char), bytesReceived, file);
 
 	}
 	fclose(file);
-
-	/*
-	  do
-	 {
-		 // limpa o buffer
-	 	 memset(&file, 0, BUFFER_SIZE);
-
-		 // recebe a mensagem do cliente
-	 	 message_length = recv(remote_socket, file, BUFFER_SIZE, 0);
-	 	 if(message_length == SOCKET_ERROR)
-	 	 msg_err_exit("recv() failed\n");
-
-		 // exibe a mensagem na tela
-	 	 printf("%s: %s\n", inet_ntoa(remote_address.sin_addr), file);
-	 }while(strcmp(file, EXIT_CALL_STRING)); // sai quando receber um "#quit" do cliente
-	 */
-
 
 	printf("encerrando\n");
 	WSACleanup();
