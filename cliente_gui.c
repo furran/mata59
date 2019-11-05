@@ -41,7 +41,7 @@ WSADATA wsa_data;
 
 
 
-void msg_err_exit(char *msg) {
+int msg_err_exit(char *msg) {
 	fprintf(stderr, msg);
 	return -1;
 }
