@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
 	char filename[BUFFER_SIZE];
 	scanf("%s", filename);
 
-	if(send_file(remote_socket, filename) == SOCKET_ERROR){
+	if(send_file(remote_socket, filename) != 0){
 		WSACleanup();
 		closesocket(remote_socket);
 		msg_err_exit("Erro na transferencia do arquivo\n");

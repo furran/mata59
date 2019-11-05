@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
 
 	printf("aguardando mensagens...\n");
 
-	if(recv_file(remote_socket) == SOCKET_ERROR){
+	if(recv_file(remote_socket) != 0){
 		WSACleanup();
 		closesocket(remote_socket);
 		msg_err_exit("Erro na transferencia do arquivo\n");

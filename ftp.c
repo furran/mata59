@@ -20,12 +20,12 @@ int send_file(int sock, char * filename){
 	file = fopen(filename, "rb");
 
 	if (file == NULL) {
-		printf("\n Nao foi possivel ler o arquivo");
+		printf("\n Nao foi possivel ler o arquivo\n");
 		send_data(sock,"",0); // mensagem de fim de transmissao, precisa ser checada no servidor.c
 		return 1;
 	}
 
-	char buffer[BUFFER_LENGTH+1];
+	char buffer[BUFFER_LENGTH];
 	memset(buffer, 0, sizeof(buffer));
 	int bytesRead;
 	int bytesSent;
@@ -57,7 +57,7 @@ int send_file(int sock, char * filename){
 int recv_file(int sock){
 	char buffer[BUFFER_LENGTH+1];
 	int bytesReceived;
-
+	memset(buffer, 0, sizeof(buffer));
 	//espera pelo nome do arquivo
 	bytesReceived = recv_data(sock, buffer, BUFFER_LENGTH);
 	if (bytesReceived == SOCKET_ERROR) {
@@ -109,7 +109,7 @@ int send_data(int sock, void* data, int length){
 
 	return bytes;
 }
-//extrai o header da mensagem
+
 //retorna o numero de bytes enviados(i.e. o tamanho da mensagem apenas), SOCKET_ERROR ou 0 caso o header indique
 int recv_data(int sock, void* data, int maxbuflen){
 	int bytes = 0;
