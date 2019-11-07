@@ -1,7 +1,7 @@
-
 #include <winsock.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifndef BUFFER_LENGTH
 #define BUFFER_LENGTH 512
@@ -68,8 +68,22 @@ int recv_file(int sock){
 	char *ext = get_filename_extension(buffer);
 
 	char outputFilename[] = "download";
+    strcat(outputFilename, ext);
+	char n[10];
+	int c = 0;
+	//verifica se o nome do arquivo ja existe e cria um nome diferente
+	while(access(outputFilename, F_OK) == 0){
+        c++;
+        strcpy(outputFilename, "download");
+        sprintf(n,"%d",c);
+        strcat(outputFilename,"(");
+        strcat(outputFilename,n);
+        strcat(outputFilename,")");
+        strcat(outputFilename, ext);
+    }
+	//strcat(outputFilename, ext); (line removed)
 
-	strcat(outputFilename, ext);
+
 	FILE * file = fopen(outputFilename, "wb");
 	if (file == NULL) {
 		printf("Erro na criacao do arquivo.\n");
@@ -158,4 +172,3 @@ char *get_filename_extension(const char *filename) {
     if(!dot || dot == filename) return "";
     return dot;
 }
-
